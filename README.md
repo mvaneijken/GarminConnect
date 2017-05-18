@@ -16,7 +16,7 @@ Version history:
  1.1 - Fix: Garmin now expects parameters in the SSO url
        Update: Added settings support in separate XML files
 
-	   The scripts does the following:
+The scripts does the following:
  - Downloads activity files from garmin in FIT, TCX or GPX format.
  - Supports delta download
 
@@ -42,9 +42,9 @@ You can change the default options the following XML files:
 Examples:
 
 Download only new activities in the FIT format
-Garmin Connect Activity Export.ps1 -Destination "c:\GarminActivities" -UserName <Your Garmin Connect Username> 
+	GCActivityExport.ps1 -Destination "c:\GarminActivities" -UserName <Your Garmin Connect Username> 
 
 Download all activities in TCX format overwriting all files in the destination
-Garmin Connect Activity Export.ps1 -Destination "c:\GarminActivities" -UserName <Your Garmin Connect Username> -ActivityFileType TCX -DownloadOption All -Overwrite Yes
+	GCActivityExport.ps1 -Destination "c:\GarminActivities" -UserName <Your Garmin Connect Username> -ActivityFileType TCX -DownloadOption All -Overwrite Yes
 
 Credits to Kyle Krafka (https://github.com/kjkjava/) for delivering a great example for this script. 
