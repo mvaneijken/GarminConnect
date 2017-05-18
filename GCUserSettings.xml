@@ -1,0 +1,15 @@
+<!-- Garmin Connect Activity Export User Settings XML -->
+<GCUserSettings>
+	<Credentials>
+		<UserName></UserName> <!-- Your Garmin Connect username -->
+		<Password></Password> <!-- Your Garmin Connect password -->
+	</Credentials>
+	<ActivityFileType>FIT</ActivityFileType> <!-- FIT, GPX or TCX -->
+	<DownloadOption>New</DownloadOption> <!-- New or All -->
+	<Folders>
+		<Destination>
+			<Folder></Folder> <!-- Destination folder, like c:\Garmin -->
+			<Overwrite>Yes</Overwrite>
+		</Destination>
+	</Folders>
+</GCUserSettings>
