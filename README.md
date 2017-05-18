@@ -20,7 +20,6 @@ Version history:
  - Downloads activity files from garmin in FIT, TCX or GPX format.
  - Supports delta download
 
-###################################
 The following commandline options are available:
 -ActivityFileType (Optional) - Choose the activitiy file type to export in. FIT is the default value.
 	- FIT (default)
@@ -40,7 +39,6 @@ You can change the default options the following XML files:
 - GCUserSettings: Containing specific settings for your situation;
 - GCProgramSettings: Containing configurations regarding Garmin Connect. These are only needed to be changed when Garmin changes their URLs.
 
-###################################
 Examples:
 
 Download only new activities in the FIT format
@@ -49,6 +47,4 @@ Garmin Connect Activity Export.ps1 -Destination "c:\GarminActivities" -UserName 
 Download all activities in TCX format overwriting all files in the destination
 Garmin Connect Activity Export.ps1 -Destination "c:\GarminActivities" -UserName <Your Garmin Connect Username> -ActivityFileType TCX -DownloadOption All -Overwrite Yes
 
-###################################
 Credits to Kyle Krafka (https://github.com/kjkjava/) for delivering a great example for this script. 
-###################################
