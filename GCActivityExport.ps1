@@ -1,11 +1,12 @@
 ﻿# Garmin Connect Activity Export
-# Mark van Eijken 2018
-# Version 1.2
+# Mark van Eijken 2019
+# Version 1.3
 # Version history:
 # 1.0 - Initial version
 # 1.1 - Fix: Garmin now expects parameters in the SSO url
 #       Update: Added settings support in separate XML files
 # 1.2 - Update support for new Garmin activity feed
+# 1.3 - Update to support the new Garmin Signin URL
 # The scripts does the following:
 # - Downloads activity files from garmin in FIT, TCX or GPX format.
 # - Supports delta download
@@ -204,7 +205,9 @@ $BaseLogin = Invoke-WebRequest -URI $BaseLoginURL -SessionVariable GarminConnect
 $LoginForm = $BaseLogin.Forms[0]
 $LoginForm.Fields["username"] = "$Username"
 $LoginForm.Fields["password"] = "$Password"
-$BaseLogin = Invoke-RestMethod -Uri ($BaseLoginURL + "</BaseLoginURL") -WebSession $GarminConnectSession -Method POST -Body $LoginForm.Fields
+$Header = @{"origin"="https://sso.garmin.com";}
+$Service = "service=https%3A%2F%2Fconnect.garmin.com%2Fmodern%2F"
+$BaseLogin = Invoke-RestMethod -Uri ($BaseLoginURL + "?" + $Service) -WebSession $GarminConnectSession -Method POST -Body $LoginForm.Fields -Headers $Header
 
 #Get Cookies
 $Cookies = $GarminConnectSession.Cookies.GetCookies($BaseLoginURL)
