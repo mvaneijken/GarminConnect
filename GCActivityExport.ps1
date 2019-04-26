@@ -34,11 +34,11 @@ $ErrorActionPreference = "Stop"
 
 #Read settings XML
 try {
-    $RAWProgramSettingsXML = get-content ".\Garmin Connect Activity Export - Program Settings.xml"
+    $RAWProgramSettingsXML = get-content ".\GCProgramSettings.xml"
     $RAWProgramSettingsXML = $RAWProgramSettingsXML.replace("&", "###")
     [xml]$ProgramSettingsXML = $RAWProgramSettingsXML
 
-    $RAWUserSettingsXML = get-content ".\Garmin Connect Activity Export - User Settings.xml"
+    $RAWUserSettingsXML = get-content ".\GCUserSettings.xml"
     $RAWUserSettingsXML = $RAWUserSettingsXML.replace("&", "###")
     [xml]$UserSettingsXML = $RAWUserSettingsXML
 }

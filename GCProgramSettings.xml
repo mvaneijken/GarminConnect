@@ -2,10 +2,11 @@
 <GCProgramSettings>
 	<BaseURLs>
 		<BaseLoginURL>https://sso.garmin.com/sso/signin</BaseLoginURL>
-		<PostLoginURL>https://connect.garmin.com/post-auth/login?</PostLoginURL>
-		<ActivitySearchURL>https://connect.garmin.com/proxy/activity-search-service-1.2/json/activities?</ActivitySearchURL>
-		<GPXActivityBaseURL>https://connect.garmin.com/proxy/activity-service-1.1/gpx/activity/</GPXActivityBaseURL>
-		<TCXActivityBaseURL>https://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/</TCXActivityBaseURL>
-		<FITActivityBaseURL>https://connect.garmin.com/proxy/download-service/files/activity/</FITActivityBaseURL>
+		<PostLoginURL>https://connect.garmin.com/modern/</PostLoginURL>
+		<ActivitySearchURL>https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities?</ActivitySearchURL>
+		<GPXActivityBaseURL>https://connect.garmin.com/modern/proxy/download-service/export/gpx/activity/</GPXActivityBaseURL>
+		<TCXActivityBaseURL>https://connect.garmin.com/modern/proxy/download-service/export/tcx/activity/</TCXActivityBaseURL>
+		<FITActivityBaseURL>https://connect.garmin.com/modern/proxy/download-service/files/activity/</FITActivityBaseURL>
 	</BaseURLs>
 </GCProgramSettings>
+
