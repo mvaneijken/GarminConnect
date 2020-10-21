@@ -1,27 +1,17 @@
-﻿<#
-.Synopsis
-   Garmin Connect Activity Export
-.DESCRIPTION
-   The scripts does the following:
-   - Downloads activity files from garmin in FIT, TCX or GPX format.
-   - Supports delta download
-
-    Version 1.1
-    Version history:
-    1.0 - Initial version
-    1.1 - Fix: Garmin now expects parameters in the SSO url
-          Update: Added settings support in separate XML files
-
-.EXAMPLE
-   GCActivityExport.ps1 (default using XML files)
-
-.EXAMPLE
-   GCActivityExport.ps1 -ActivityFileType "FIT" -DownloadOption "All" -Destination "C:\Garmin" -UserName "username" -Password "password"
-#>
-
+﻿# Garmin Connect Activity Export
+# Mark van Eijken 2018
+# Version 1.2
+# Version history:
+# 1.0 - Initial version
+# 1.1 - Fix: Garmin now expects parameters in the SSO url
+#       Update: Added settings support in separate XML files
+# 1.2 - Fix: Garmin removed the login action from the login response. It's now added as a static string.
+#       Update: It seems that the json provided for an activity does not always contain all needed fields. Fallback is using only the basic information for creating a activity file.
+# The scripts does the following:
+# - Downloads activity files from garmin in FIT, TCX or GPX format.
+# - Supports delta download
 
 PARAM(
-    [CmdletBinding()]
     [ValidateSet("FIT", "TCX", "GPX")]
     $ActivityFileType = "",
     [ValidateSet("All", "New")]
@@ -42,14 +32,15 @@ PARAM(
 $error.Clear()
 $ErrorActionPreference = "Stop"
 
+
 #Read settings XML
 try {
-    $RAWProgramSettingsXML = get-content ".\GCProgramSettings.xml"
-    $RAWProgramSettingsXML = $RAWProgramSettingsXML.replace('&', "###")
+    $RAWProgramSettingsXML = get-content ".\Garmin Connect Activity Export - Program Settings.xml"
+    $RAWProgramSettingsXML = $RAWProgramSettingsXML.replace("&", "###")
     [xml]$ProgramSettingsXML = $RAWProgramSettingsXML
 
-    $RAWUserSettingsXML = get-content ".\GCUserSettings.xml"
-    $RAWUserSettingsXML = $RAWUserSettingsXML.replace('&', "###")
+    $RAWUserSettingsXML = get-content ".\Garmin Connect Activity Export - User Settings.xml"
+    $RAWUserSettingsXML = $RAWUserSettingsXML.replace("&", "###")
     [xml]$UserSettingsXML = $RAWUserSettingsXML
 }
 catch {
@@ -58,8 +49,8 @@ catch {
 
 ##Checks
 if ([string]::IsNullOrEmpty($username) -or [string]::IsNullOrEmpty($Password)) {
-    #Check for GCUserSettings XML file
-    write-host "INFO - Using Garmin Connect credentials from GCUserSettings XML file"
+    #Check for Garmin Connect Activity Export - User Settings XML file
+    write-host "INFO - Using Garmin Connect credentials from Garmin Connect Activity Export - User Settings XML file"
     $Username = $UserSettingsXML.GCUserSettings.Credentials.UserName
     $password = $UserSettingsXML.GCUserSettings.Credentials.Password
 }
@@ -69,15 +60,15 @@ else {
 
 #DestinationCheck
 if ([string]::IsNullOrEmpty($Destination)) {
-    #Check for GCUserSettings XML file
-    write-host "INFO - Using Garmin Connect Destination from GCUserSettings XML file"
+    #Check for Garmin Connect Activity Export - User Settings XML file
+    write-host "INFO - Using Garmin Connect Destination from Garmin Connect Activity Export - User Settings XML file"
     $Destination = $UserSettingsXML.GCUserSettings.Folders.Destination.Folder
 
     #A work-arround to support system environment variables from the XML file.
     if ($Destination -like '$env:*') {
         $PsEnv = $Destination.split("\")[0]
         $PsEnvVariable = $PsEnv.split(":")[1]
-        $PsEnvPath = Get-ChildItem env: | Where-Object Name -eq $PsEnvVariable | Select-Object value -ExpandProperty value
+        $PsEnvPath = Get-ChildItem env: | Where-Object Name -eq $PsEnvVariable | select value -ExpandProperty value
         $destination = $Destination.Replace($PsEnv, $PsEnvPath)
     }
 }
@@ -95,7 +86,7 @@ else {
 
 #ActivityFileType Check
 if ([string]::IsNullOrEmpty($ActivityFileType)) {
-    #Check for GCUserSettings XML file
+    #Check for Garmin Connect Activity Export - User Settings XML file
 
     $ActivityFileType = $UserSettingsXML.GCUserSettings.ActivityFileType
     $ActivityFileTypeValidateSet = @("FIT", "TCX", "GPX")
@@ -113,7 +104,7 @@ if ([string]::IsNullOrEmpty($ActivityFileType)) {
         }
     }
     else {
-        write-host "INFO - Using Garmin Connect ActivityFileType from GCUserSettings XML file"
+        write-host "INFO - Using Garmin Connect ActivityFileType from Garmin Connect Activity Export - User Settings XML file"
     }
 }
 else {
@@ -122,8 +113,8 @@ else {
 
 #Download option check
 if ([string]::IsNullOrEmpty($DownloadOption)) {
-    #Check for GCUserSettings XML file
-    write-host "INFO - Using Garmin Connect DownloadOption from GCUserSettings XML file"
+    #Check for Garmin Connect Activity Export - User Settings XML file
+    write-host "INFO - Using Garmin Connect DownloadOption from Garmin Connect Activity Export - User Settings XML file"
     $DownloadOption = $UserSettingsXML.GCUserSettings.DownloadOption
     $DownloadOptionValidateSet = @("New", "All")
     $DownloadOptionCorrect = $false
@@ -139,7 +130,7 @@ if ([string]::IsNullOrEmpty($DownloadOption)) {
         }
     }
     else {
-        write-host "INFO - Using Garmin Connect download option from GCUserSettings XML file"
+        write-host "INFO - Using Garmin Connect download option from Garmin Connect Activity Export - User Settings XML file"
     }
 }
 else {
@@ -148,8 +139,8 @@ else {
 
 #Overwrite check
 if ([string]::IsNullOrEmpty($Overwrite)) {
-    #Check for GCUserSettings XML file
-    write-host "INFO - Using Garmin Connect Overwrite from GCUserSettings XML file"
+    #Check for Garmin Connect Activity Export - User Settings XML file
+    write-host "INFO - Using Garmin Connect Overwrite from Garmin Connect Activity Export - User Settings XML file"
     $Overwrite = $UserSettingsXML.GCUserSettings.Folders.Destination.Overwrite
     $OverwriteValidateSet = @("Yes", "No")
     $OverwriteCorrect = $false
@@ -165,7 +156,7 @@ if ([string]::IsNullOrEmpty($Overwrite)) {
         }
     }
     else {
-        write-host "INFO - Using Garmin Connect Overwrite from GCUserSettings XML file"
+        write-host "INFO - Using Garmin Connect Overwrite from Garmin Connect Activity Export - User Settings XML file"
     }
 }
 else {
@@ -173,12 +164,12 @@ else {
 }
 
 #Get URLs neede from program settings xml
-$ProgramSettingsXMLBaseURLNodes = $ProgramSettingsXML.GCProgramSettings.BaseURLs | Get-Member | where-object name -notlike "#*" | where-object membertype -eq "property" | Select-Object| select name -ExpandProperty name
+$ProgramSettingsXMLBaseURLNodes = $ProgramSettingsXML.GCProgramSettings.BaseURLs | gm | where-object name -notlike "#*" | where-object membertype -eq "property" | select name -ExpandProperty name
 foreach ($n in $ProgramSettingsXMLBaseURLNodes) {
     $variablename = $n
     New-Variable $n -Force
     if ([string]::IsNullOrEmpty($($ProgramSettingsXML.GCProgramSettings.BaseURLs.$n))) {
-        write-error "Setting $n is empty in the GCProgramSettings XML file. Please correct"
+        write-error "Setting $n is empty in the Garmin Connect Activity Export - Program Settings XML file. Please correct"
     }
     else {
         Set-Variable -Name $variablename -value  $($ProgramSettingsXML.GCProgramSettings.BaseURLs.$n).replace("###", "&")
@@ -215,7 +206,7 @@ $BaseLogin = Invoke-WebRequest -URI $BaseLoginURL -SessionVariable GarminConnect
 $LoginForm = $BaseLogin.Forms[0]
 $LoginForm.Fields["username"] = "$Username"
 $LoginForm.Fields["password"] = "$Password"
-$BaseLogin = Invoke-RestMethod -Uri ($BaseLoginURL + $LoginForm.Action) -WebSession $GarminConnectSession -Method POST -Body $LoginForm.Fields
+$BaseLogin = Invoke-RestMethod -Uri ($BaseLoginURL + "</BaseLoginURL") -WebSession $GarminConnectSession -Method POST -Body $LoginForm.Fields
 
 #Get Cookies
 $Cookies = $GarminConnectSession.Cookies.GetCookies($BaseLoginURL)
@@ -228,14 +219,14 @@ foreach ($cookie in $Cookies) {
 }#>
 
 #Get SSO cookie
-$SSOCookie = $Cookies | Where-Object name -eq "CASTGC" | Select-Object value -ExpandProperty value
+$SSOCookie = $Cookies | Where-Object name -eq "CASTGC" | select value -ExpandProperty value
 if ($SSOCookie.Length -lt 1) {
     write-error "ERROR - No valid SSO cookie found, wrong credentials?"
     break
 }
 
 #Authenticate by using cookie
-$Null = Invoke-RestMethod -Uri ($PostLoginURL + "?ticket=" + $SSOCookie) -WebSession $GarminConnectSession
+$PostLogin = Invoke-RestMethod -Uri ($PostLoginURL + "?ticket=" + $SSOCookie) -WebSession $GarminConnectSession
 
 #Set the correct activity download URL for the selected type.
 switch ($ActivityFileType) {
@@ -268,8 +259,8 @@ if ($DownloadOption -eq "New") {
         write-warning "WARNING - $msg"
         $question = $msg
         $choices = New-Object Collections.ObjectModel.Collection[Management.Automation.Host.ChoiceDescription]
-        $choices.Add((New-Object Management.Automation.Host.ChoiceDescription -ArgumentList '&Yes'))
-        $choices.Add((New-Object Management.Automation.Host.ChoiceDescription -ArgumentList '&No'))
+        $choices.Add((New-Object Management.Automation.Host.ChoiceDescription -ArgumentList "&Yes"))
+        $choices.Add((New-Object Management.Automation.Host.ChoiceDescription -ArgumentList "&No"))
         $decision = $Host.UI.PromptForChoice($message, $question, $choices, 0)
         if ($decision -eq 0) {$DownloadOption = "All"}
         elseif ($decision -eq 1) {
@@ -337,7 +328,14 @@ try {
         $ActivityID = $Activity.activity.activityId
         $ActivityName = $Activity.activity.activityName
         $ActivityType = ($Activity.activity.activityType.key).substring(0, 1).ToUpper() + ($Activity.activity.activityType.key).substring(1).tolower()
-        $ActivityBeginTimeStamp = $Activity.activity.activitySummary.BeginTimestamp.value.Substring(0, 10)
+
+        $ActivitySummary = $Activity.activity.activitySummary
+        if ($ActivitySummary) {
+            $ActivityBeginTimeStamp = $Activity.activity.activitySummary.BeginTimestamp.value.Substring(0, 10)
+        }
+        else {
+            $ActivityBeginTimeStamp = (get-date $Activity.activity.updatedDate.'$').ToString("yyyy-MM-dd")
+        }
         $NamingMask = (("$ActivityID - $ActivityBeginTimeStamp - $ActivityType - $ActivityName").TrimEnd() -replace $_.name -replace '[^A-Za-z0-9-_\@\,\(\) \.\[\]]', '-')
 
         #Unzip the temporary files for FIT files and move all files to the destination location
@@ -374,7 +372,7 @@ try {
             }
 
             elseif ($zip.items().count -eq 1) {
-                write-host "INFO - Trying to create file $$(NamingMask.$ActivityFileType)"
+                write-host "INFO - Trying to create file $NamingMask.$ActivityFileType"
                 foreach ($Item in $ZIP.items()) {
                     $Shell.Namespace(“$TempDir”).copyhere($zip.items(), 0x14)
                     $DownloadedFileFullPath = join-path -path $TempDir -ChildPath $($Item.name)
@@ -401,7 +399,7 @@ try {
         }
         #All other filetypes are considered as non-zip.
         else {
-            write-host "INFO - Trying to create file $($NamingMask.$ActivityFileType)"
+            write-host "INFO - Trying to create file $NamingMask.$ActivityFileType"
             $FinalFileName = ($NamingMask + "." + $ActivityFileType)
             $FinalFileNameTempFullPath = Join-Path -path $TempDir -ChildPath $FinalFileName
             Rename-Item $OutputFileFullPath -NewName $FinalFileNameTempFullPath
@@ -427,10 +425,11 @@ catch {
 }
 
 #Finally write the hidden delta cookie for later use
-if (($($Activities[0].activity.activityId)).length -gt 0) {
+if (($Activities[0].activity.activityId).length -gt 0) {
     if (!(Test-Path $CookieFileFullPath)) {$null = New-Item $CookieFileFullPath -ItemType File -Force}
     $NewestActivity = ($Activities[0].activity.activityId)
     try {
+
         $CookieFileFullPath = join-path -path $Destination -ChildPath $CookieFilename
         (Get-Item $CookieFileFullPath -Force).Attributes = "Normal"
         $NewestActivity | Out-File $CookieFileFullPath -Force
@@ -441,6 +440,4 @@ if (($($Activities[0].activity.activityId)).length -gt 0) {
         write-error "ERROR - Unable the write the delta file for later use, see error details below:`n$($error[0])"
     }
 }
-else {
-    write-warning -Message "No new activities found"
-}
+else {write-warning "No new activities found." }
