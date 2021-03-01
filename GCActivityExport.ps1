@@ -1,12 +1,13 @@
 ﻿# Garmin Connect Activity Export
-# Mark van Eijken 2019
-# Version 1.3
+# Mark van Eijken 2021
+# Version 1.3.1
 # Version history:
-# 1.0 - Initial version
-# 1.1 - Fix: Garmin now expects parameters in the SSO url
+# 1.0   - Initial version
+# 1.1   - Fix: Garmin now expects parameters in the SSO url
 #       Update: Added settings support in separate XML files
-# 1.2 - Update support for new Garmin activity feed
-# 1.3 - Update to support the new Garmin Signin URL
+# 1.2   - Update support for new Garmin activity feed
+# 1.3   - Update to support the new Garmin Signin URL
+# 1.3.1 - Fix due error 402 Payment required error when retrieving activity list
 # The scripts does the following:
 # - Downloads activity files from garmin in FIT, TCX or GPX format.
 # - Supports delta download
@@ -14,11 +15,11 @@
 PARAM(
     [CmdletBinding()]
     [ValidateSet("FIT", "TCX", "GPX")]
-    $ActivityFileType = "",
+    $ActivityFileType = "FIT",
     [ValidateSet("All", "New")]
-    $DownloadOption = "",
+    $DownloadOption = "New",
     [parameter(Mandatory = $false)]
-    $Destination = "",
+    $Destination = "$env:USERPROFILE\Desktop",
     [parameter(Mandatory = $false)]
     $Username = "",
     [parameter(Mandatory = $false)]
@@ -206,7 +207,22 @@ $BaseLogin = Invoke-WebRequest -URI $BaseLoginURL -SessionVariable GarminConnect
 $LoginForm = $BaseLogin.Forms[0]
 $LoginForm.Fields["username"] = "$Username"
 $LoginForm.Fields["password"] = "$Password"
-$Header = @{"origin"="https://sso.garmin.com";}
+$Header = @{
+    "origin"="https://sso.garmin.com";
+    "authority"="connect.garmin.com"
+    "scheme"="https"
+    "path"="/signin/"
+    "pragma"="no-cache"
+    "cache-control"="no-cache"
+    "dnt"="1"
+    "upgrade-insecure-requests"="1"
+    "user-agent"="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36 Edg/88.0.705.81"
+    "accept"="text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
+    "sec-fetch-site"="cross-site"
+    "sec-fetch-mode"="navigate"
+    "sec-fetch-user"="?1"
+    "sec-fetch-dest"="document"
+    "accept-language"="en,en-US;q=0.9,nl;q=0.8"}
 $Service = "service=https%3A%2F%2Fconnect.garmin.com%2Fmodern%2F"
 $BaseLogin = Invoke-RestMethod -Uri ($BaseLoginURL + "?" + $Service) -WebSession $GarminConnectSession -Method POST -Body $LoginForm.Fields -Headers $Header
 
@@ -228,7 +244,7 @@ if ($SSOCookie.Length -lt 1) {
 }
 
 #Authenticate by using cookie
-$PostLogin = Invoke-RestMethod -Uri ($PostLoginURL + "?ticket=" + $SSOCookie) -WebSession $GarminConnectSession
+$PostLogin = Invoke-RestMethod -Uri ($PostLoginURL + "?ticket=" + $SSOCookie) -WebSession $GarminConnectSession 
 
 #Set the correct activity download URL for the selected type.
 switch ($ActivityFileType) {
@@ -243,7 +259,20 @@ $PageSize = 100
 $FirstRecord = 0
 $Pages = 0
 do {
-    $SearchResults = Invoke-RestMethod -Uri $ActivitySearchURL"?limit=$PageSize&start=$FirstRecord" -method get -WebSession $GarminConnectSession -ErrorAction SilentlyContinue
+    $SearchResults = Invoke-RestMethod -Uri $ActivitySearchURL"?limit=$PageSize&start=$FirstRecord" -method get -WebSession $GarminConnectSession -ErrorAction SilentlyContinue -Headers @{
+        "method"="GET"
+        "authority"="connect.garmin.com"
+        "scheme"="https"
+        "accept"="application/json, text/javascript, */*; q=0.01"
+        "dnt"="1"
+        "x-requested-with"="XMLHttpRequest"
+        "user-agent"="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36 Edg/88.0.705.81"
+        "nk"="NT"
+        "sec-fetch-site"="same-origin"
+        "sec-fetch-mode"="cors"
+        "sec-fetch-dest"="empty"
+        "referer"="https://connect.garmin.com/modern/activities"
+        "accept-language"="en,en-US;q=0.9,nl;q=0.8"}
     $ActivityList += $SearchResults
     $FirstRecord = $FirstRecord + $PageSize
     $Pages++
@@ -299,7 +328,7 @@ else {
     $Activities = $ActivityList
 }
 
-#Download activities in queu and unpack to destination location
+#Download activities in queue and unpack to destination location
 write-host "INFO - Continue to process all retrieved activities, please wait..."
 
 try {
