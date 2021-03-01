@@ -42,11 +42,12 @@ Download all activities in TCX format overwriting all files in the destination:<
 ```& C:\Scripts\GCActivityExport.ps1 -Destination "c:\GarminActivities" -UserName "<Your Garmin Connect Username>" -Password "<Your Garmin Connect Password>" -ActivityFileType TCX -DownloadOption All -Overwrite Yes```
 
 ## Version history<br>
-1.0 - Initial version<br>
-1.1 - Fix: Garmin now expects parameters in the SSO url<br>
-      Update: Added settings support in separate XML files<br>
-1.2 - Update support for new Garmin activity feed<br>
-1.3 - Update to support the new Garmin Signin URL<br>
+1.0   - Initial version<br>
+1.1   - Fix: Garmin now expects parameters in the SSO url<br>
+        Update: Added settings support in separate XML files<br>
+1.2   - Update support for new Garmin activity feed<br>
+1.3   - Update to support the new Garmin Signin URL<br>
+1.3.1 - Fix due error 402 Payment required error when retrieving activity list<br>
 
 ## Credits
 Credits to Kyle Krafka (https://github.com/kjkjava/) for delivering a great example for this script. 
