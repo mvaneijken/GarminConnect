@@ -3,7 +3,7 @@
 	<BaseURLs>
 		<BaseLoginURL>https://sso.garmin.com/sso/signin</BaseLoginURL>
 		<PostLoginURL>https://connect.garmin.com/modern/</PostLoginURL>
-		<ActivitySearchURL>https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities?</ActivitySearchURL>
+		<ActivitySearchURL>https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities</ActivitySearchURL>
 		<GPXActivityBaseURL>https://connect.garmin.com/modern/proxy/download-service/export/gpx/activity/</GPXActivityBaseURL>
 		<TCXActivityBaseURL>https://connect.garmin.com/modern/proxy/download-service/export/tcx/activity/</TCXActivityBaseURL>
 		<FITActivityBaseURL>https://connect.garmin.com/modern/proxy/download-service/files/activity/</FITActivityBaseURL>
