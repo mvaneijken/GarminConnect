@@ -1,6 +1,6 @@
 ﻿# Garmin Connect Activity Export
-# Mark van Eijken 2022
-# Version 1.3.2
+# Mark van Eijken 2024
+# Version 1.4
 # Version history:
 # 1.0   - Initial version
 # 1.1   - Fix: Garmin now expects parameters in the SSO url
@@ -11,13 +11,19 @@
 # 1.3.2 - Remove default destination folder, because it causes to ignore the GCUserSettings.xml destination
 #         Remove empty strings for Username and Password
 #         Format layout
+# 1.4   - Update authentication process to use an OAuth token
+#         Add support for KML files
+#         Updated user-agent
+#         Remove Garmin Connect Actvity Export -Program Settings.xml deoendency
+#         Layout and output improvements
+#         Report when rate limited (or any other error from Garmin)
 # The scripts does the following:
 # - Downloads activity files from garmin in FIT, TCX or GPX format.
 # - Supports delta download
 
 PARAM(
     [CmdletBinding()]
-    [ValidateSet("FIT", "TCX", "GPX")]
+    [ValidateSet("FIT", "TCX", "GPX", "KML")]
     $ActivityFileType = "FIT",
     [ValidateSet("All", "New")]
     $DownloadOption = "New",
@@ -35,28 +41,33 @@ PARAM(
 
 #General parameters and settings
 $error.Clear()
-$ErrorActionPreference = "Stop"
+#$ErrorActionPreference = "Stop"
 
-#Read settings XML
 try {
-    $RAWProgramSettingsXML = Get-Content ".\GCProgramSettings.xml"
-    $RAWProgramSettingsXML = $RAWProgramSettingsXML.replace("&", "###")
-    [xml]$ProgramSettingsXML = $RAWProgramSettingsXML
-
-    $RAWUserSettingsXML = Get-Content ".\GCUserSettings.xml"
-    $RAWUserSettingsXML = $RAWUserSettingsXML.replace("&", "###")
-    [xml]$UserSettingsXML = $RAWUserSettingsXML
+#GCProgramSettings
+$ProgramSettings = [PSCustomObject]@{
+    GCProgramSettings = [PSCustomObject]@{
+        BaseURLs  = [PSCustomObject]@{
+            BaseLoginURL       = "https://sso.garmin.com/sso/login?service=https%3A%2F%2Fconnect.garmin.com%2Fmodern%2F&webhost=olaxpw-conctmodern004&source=https%3A%2F%2Fconnect.garmin.com%2Fnl-NL%2Fsignin&redirectAfterAccountLoginUrl=https%3A%2F%2Fconnect.garmin.com%2Fmodern%2F&redirectAfterAccountCreationUrl=https%3A%2F%2Fconnect.garmin.com%2Fmodern%2F&gauthHost=https%3A%2F%2Fsso.garmin.com%2Fsso&locale=nl_NL&id=gauth-widget&cssUrl=https%3A%2F%2Fstatic.garmincdn.com%2Fcom.garmin.connect%2Fui%2Fcss%2Fgauth-custom-v1.2-min.css&clientId=GarminConnect&rememberMeShown=true&rememberMeChecked=false&createAccountShown=true&openCreateAccount=false&usernameShown=false&displayNameShown=false&consumeServiceTicket=false&initialFocus=true&embedWidget=false&generateExtraServiceTicket=false&globalOptInShown=false&globalOptInChecked=false"
+            OAuthUrl           = "https://connect.garmin.com/modern/di-oauth/exchange"
+            PostLoginURL       = "https://connect.garmin.com/modern/"
+            ActivitySearchURL  = "https://connect.garmin.com/activitylist-service/activities/search/activities?"
+            GPXActivityBaseURL = "https://connect.garmin.com/download-service/export/gpx/activity/"
+            TCXActivityBaseURL = "https://connect.garmin.com/download-service/export/tcx/activity/"
+            FITActivityBaseURL = "https://connect.garmin.com/download-service/files/activity/"
+            KMLActivityBaseURL = "https://connect.garmin.com/download-service/export/kml/activity/"
+        }
+        UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0"
+    }
 }
-catch {
-    Write-Error "ERROR - Error occured reading XML files:`n$error"
-}
+"ProgramSettings: {0}" -f $ProgramSettings | ConvertTo-Json | Write-Verbose
 
 ##Checks
-if ([string]::IsNullOrEmpty($username) -or [string]::IsNullOrEmpty($Password)) {
+if ([string]::IsNullOrEmpty($Username) -or [string]::IsNullOrEmpty($Password)) {
     #Check for Garmin Connect Activity Export - User Settings XML file
     Write-Host "INFO - Using Garmin Connect credentials from Garmin Connect Activity Export - User Settings XML file"
     $Username = $UserSettingsXML.GCUserSettings.Credentials.UserName
-    $password = $UserSettingsXML.GCUserSettings.Credentials.Password
+    $Password = $UserSettingsXML.GCUserSettings.Credentials.Password
 }
 else {
     Write-Host "INFO - Using Garmin Connect credentials from script parameters"
@@ -73,7 +84,7 @@ if ([string]::IsNullOrEmpty($Destination)) {
         $PsEnv = $Destination.split("\")[0]
         $PsEnvVariable = $PsEnv.split(":")[1]
         $PsEnvPath = Get-ChildItem env: | Where-Object Name -EQ $PsEnvVariable | Select-Object value -ExpandProperty value
-        $destination = $Destination.Replace($PsEnv, $PsEnvPath)
+        $Destination = $Destination.Replace($PsEnv, $PsEnvPath)
     }
 }
 else {
@@ -168,19 +179,13 @@ else {
 }
 
 #Get URLs neede from program settings xml
-$ProgramSettingsXMLBaseURLNodes = $ProgramSettingsXML.GCProgramSettings.BaseURLs | Get-Member | Where-Object name -NotLike "#*" | Where-Object membertype -EQ "property" | Select-Object name -ExpandProperty name
-foreach ($n in $ProgramSettingsXMLBaseURLNodes) {
+$ProgramSettingsBaseURLNodes = $ProgramSettings.GCProgramSettings.BaseURLs | Get-Member -MemberType Properties | Select-Object name -ExpandProperty name
+foreach ($n in $ProgramSettingsBaseURLNodes) {
     $variablename = $n
     New-Variable $n -Force
-    if ([string]::IsNullOrEmpty($($ProgramSettingsXML.GCProgramSettings.BaseURLs.$n))) {
-        Write-Error "Setting $n is empty in the Garmin Connect Activity Export - Program Settings XML file. Please correct"
-    }
-    else {
-        Set-Variable -Name $variablename -Value  $($ProgramSettingsXML.GCProgramSettings.BaseURLs.$n).replace("###", "&")
-        $n = $($ProgramSettingsXML.GCProgramSettings.BaseURLs.$n)
-        #Get-Variable $variablename
-    }
+    Set-Variable -Name $variablename -Value  $($ProgramSettings.GCProgramSettings.BaseURLs.$n)
 }
+$UserAgent = $ProgramSettings.GCProgramSettings.UserAgent
 
 #Check if needed parameters are present
 if ([string]::IsNullOrEmpty($Username)) { $Username = Read-Host -Prompt "Enter your username" }
@@ -196,6 +201,7 @@ else { if ($Destination.EndsWith("\")) { $Destination = $Destination.TrimEnd("\"
 $CookieFilename = ".GCDownloadStatus$ActivityFileType.cookie"
 $CookieFileFullPath = ($Destination + "\" + $CookieFilename)
 
+
 #Write process information:
 Write-Host "INFO - Starting processing $ActivityFileType files from Garmin Connect with the following parameters:"
 Write-Host "- Activity File Type = $ActivityFileType"
@@ -206,11 +212,12 @@ Write-Host "- Overwrite = $Overwrite"
 
 #Authenticate
 Write-Host "INFO - Connecting to Garmin Connect for user $Username" -ForegroundColor Gray
+"BaseLoginUrl: {0}" -f $BaseLoginURL | Write-Verbose
 $BaseLogin = Invoke-WebRequest -Uri $BaseLoginURL -SessionVariable GarminConnectSession
 $LoginForm = $BaseLogin.Forms[0]
 $LoginForm.Fields["username"] = "$Username"
 $LoginForm.Fields["password"] = "$Password"
-$Header = @{
+$Headers = @{
     "origin"                    = "https://sso.garmin.com";
     "authority"                 = "connect.garmin.com"
     "scheme"                    = "https"
@@ -219,7 +226,7 @@ $Header = @{
     "cache-control"             = "no-cache"
     "dnt"                       = "1"
     "upgrade-insecure-requests" = "1"
-    "user-agent"                = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36 Edg/88.0.705.81"
+    "user-agent"                = $UserAgent
     "accept"                    = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
     "sec-fetch-site"            = "cross-site"
     "sec-fetch-mode"            = "navigate"
@@ -228,9 +235,10 @@ $Header = @{
     "accept-language"           = "en,en-US;q=0.9,nl;q=0.8"
 }
 $Service = "service=https%3A%2F%2Fconnect.garmin.com%2Fmodern%2F"
-$BaseLogin = Invoke-RestMethod -Uri ($BaseLoginURL + "?" + $Service) -WebSession $GarminConnectSession -Method POST -Body $LoginForm.Fields -Headers $Header
+$BaseLogin = Invoke-RestMethod -Uri ($BaseLoginURL + "?" + $Service) -WebSession $GarminConnectSession -Method POST -Body $LoginForm.Fields -Headers $Headers  -UserAgent $UserAgent
 
 #Get Cookies
+"Read cookies" | Write-Verbose
 $Cookies = $GarminConnectSession.Cookies.GetCookies($BaseLoginURL)
 
 <#Show Cookies
@@ -248,14 +256,58 @@ if ($SSOCookie.Length -lt 1) {
 }
 
 #Authenticate by using cookie
-$PostLogin = Invoke-RestMethod -Uri ($PostLoginURL + "?ticket=" + $SSOCookie) -WebSession $GarminConnectSession
+"Post login authentication" | Write-Verbose
+$PostLogin = Invoke-RestMethod -Uri ($PostLoginURL + "?ticket=" + $SSOCookie) -WebSession $GarminConnectSession  -UserAgent $UserAgent
+
+#Get the bearer token
+"Get bearer token" | Write-Verbose
+$OAuthResult = Invoke-RestMethod -UseBasicParsing -Uri $OAuthUrl -Method POST -WebSession $GarminConnectSession -UserAgent $UserAgent -Headers @{
+    "Accept"          = "application/json, text/plain, */*"
+    "Accept-Language" = "en-US,en;q=0.5"
+    "Accept-Encoding" = "gzip, deflate"
+    "Referer"         = "https://connect.garmin.com/modern/"
+    "NK"              = "NT"
+    "Origin"          = "https://connect.garmin.com"
+    "DNT"             = "1"
+    "Sec-GPC"         = "1"
+    "Sec-Fetch-Dest"  = "empty"
+    "Sec-Fetch-Mode"  = "cors"
+    "Sec-Fetch-Site"  = "same-origin"
+    "TE"              = "trailers"
+}
+
+$Headers = @{
+    "authority"          = "connect.garmin.com"
+    "method"             = "GET"
+    "path"               = $Path
+    "scheme"             = "https"
+    "accept"             = "application/json, text/javascript, */*; q=0.01"
+    "accept-encoding"    = "gzip, deflate"
+    "accept-language"    = "en,en-US;q=0.9,nl;q=0.8"
+    "authorization"      = "Bearer {0}" -f $OAuthResult.access_token
+    "baggage"            = "sentry-environment=prod,sentry-release=connect%404.77.317,sentry-public_key=f0377f25d5534ad589ab3a9634f25e71,sentry-trace_id=2ad3f9199d7245f48903717ee8de989e,sentry-sample_rate=1,sentry-sampled=true"
+    "di-backend"         = "connectapi.garmin.com"
+    "dnt"                = "1"
+    "nk"                 = "NT"
+    "referer"            = "https://connect.garmin.com/modern/activities"
+    "sec-ch-ua"          = "`"Microsoft Edge`";v=`"123`", `"Not:A-Brand`";v=`"8`", `"Chromium`";v=`"123`""
+    "sec-ch-ua-mobile"   = "?0"
+    "sec-ch-ua-platform" = "`"Windows`""
+    "sec-fetch-dest"     = "empty"
+    "sec-fetch-mode"     = "cors"
+    "sec-fetch-site"     = "same-origin"
+    "x-lang"             = "en-US"
+    "x-requested-with"   = "XMLHttpRequest"
+}
 
 #Set the correct activity download URL for the selected type.
 switch ($ActivityFileType) {
     'TCX' { $ActivityBaseURL = $TCXActivityBaseURL }
     'GPX' { $ActivityBaseURL = $GPXActivityBaseURL }
+    'KML' { $ActivityBaseURL = $KMLActivityBaseURL }
     Default { $ActivityBaseURL = $FITActivityBaseURL }
 }
+"ActivityFileType: {0}" -f $ActivityFileType | Write-Verbose
 
 #Get activity pages and check if the connection is successfull
 $ActivityList = @()
@@ -263,21 +315,12 @@ $PageSize = 100
 $FirstRecord = 0
 $Pages = 0
 do {
-    $SearchResults = Invoke-RestMethod -Uri $ActivitySearchURL"?limit=$PageSize&start=$FirstRecord" -Method get -WebSession $GarminConnectSession -ErrorAction SilentlyContinue -Headers @{
-        "method"           = "GET"
-        "authority"        = "connect.garmin.com"
-        "scheme"           = "https"
-        "accept"           = "application/json, text/javascript, */*; q=0.01"
-        "dnt"              = "1"
-        "x-requested-with" = "XMLHttpRequest"
-        "user-agent"       = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36 Edg/88.0.705.81"
-        "nk"               = "NT"
-        "sec-fetch-site"   = "same-origin"
-        "sec-fetch-mode"   = "cors"
-        "sec-fetch-dest"   = "empty"
-        "referer"          = "https://connect.garmin.com/modern/activities"
-        "accept-language"  = "en,en-US;q=0.9,nl;q=0.8"
-    }
+    $Uri = [System.Uri]::new($ActivitySearchURL)
+    $Path = "{0}limit={1}&start={2}" -f $Uri.PathAndQuery, $PageSize, $FirstRecord
+    $Headers.Path = $Path
+    $Url = "https://connect.garmin.com", $Path -join ""
+    "Activity list url: {0}" -f $Url | Write-Verbose
+    $SearchResults = Invoke-RestMethod -Uri $Url -Method get -WebSession $GarminConnectSession -ErrorAction SilentlyContinue -Headers $Headers
     $ActivityList += $SearchResults
     $FirstRecord = $FirstRecord + $PageSize
     $Pages++
@@ -292,6 +335,7 @@ else {
 #$TotalPages = $Pages
 
 #Validate download option
+"Validate download option" | Write-Verbose
 if ($DownloadOption -eq "New") {
     $ErrorFound = $true
     if (Test-Path $CookieFileFullPath -ErrorAction SilentlyContinue) {
@@ -336,14 +380,18 @@ else {
 #Download activities in queue and unpack to destination location
 Write-Host "INFO - Continue to process all retrieved activities, please wait..."
 
-try {
     $TempDir = Join-Path -Path $env:temp -ChildPath GarminConnectActivityExportTMP
+    "TempDir: {0}" -f $TempDir | Write-Verbose
     $ActivityFileType = $ActivityFileType.tolower()
     if (!(Test-Path $TempDir)) { $null = New-Item -Path $TempDir -ItemType Directory -Force }
     $ActivityExportedCount = 0
     foreach ($Activity in $Activities) {
         #Download files
-        $URL = $ActivityBaseURL + $($Activity.activityID) + "/"
+        $Uri = [System.Uri]::new($ActivityBaseURL)
+        $Path = "{0}{1}/" -f $Uri.PathAndQuery, $($Activity.activityID)
+        $Headers.path = $Path
+        $URL = $ActivityBaseURL, $($Activity.activityID) -Join ""
+        "Download Url: {0}" -f $URL | Write-Verbose
         if ($ActivityFileType -eq "fit") {
             $OutputFileFullPath = Join-Path -Path $TempDir -ChildPath "$($Activity.activityID).zip"
         }
@@ -352,7 +400,7 @@ try {
             #Allways overwrite temp files
             $null = Remove-Item $OutputFileFullPath -Force
         }
-        Invoke-RestMethod -Uri $URL  -WebSession $GarminConnectSession -OutFile $OutputFileFullPath
+        Invoke-RestMethod -Uri $URL  -WebSession $GarminConnectSession -Headers $Headers -OutFile $OutputFileFullPath
 
         #Setting naming parameters for having the file to a more readable format
         $ActivityID = $Activity.activityId
@@ -442,8 +490,14 @@ try {
 }
 
 catch {
-    Write-Error "ERROR - An unexpected error occurred. See errordetails below:`n$($error[0])"
-    break
+    if ($_ -like "error code:*") {
+        Write-Error "ERROR - An error occurred while downloading the activity files. Garmin responded with error code: {0}. This is probably because your requests are rate limited, please try again later!" -f $_
+        break
+    }
+    {
+        Write-Error "ERROR - An unexpected error occurred. See errordetails below:`n$($error[0])"
+        break
+    }
 }
 
 #Finally write the hidden delta cookie for later use
@@ -456,7 +510,7 @@ if (($Activities[0].activityId).length -gt 0) {
         (Get-Item $CookieFileFullPath -Force).Attributes = "Normal"
         $NewestActivity | Out-File $CookieFileFullPath -Force
         (Get-Item $CookieFileFullPath -Force).Attributes = "Hidden"
-        Write-Host "INFO - Finished exporting $ActivityExportedCount activities from Garmin Connect. Delta file successfully stored."
+        Write-Host "INFO - Finished exporting $ActivityExportedCount activities from Garmin Connect to $Destination. Delta file successfully stored."
     }
     catch {
         Write-Error "ERROR - Unable the write the delta file for later use, see error details below:`n$($error[0])"
