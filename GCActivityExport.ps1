@@ -1,6 +1,6 @@
 ﻿# Garmin Connect Activity Export
-# Mark van Eijken 2022
-# Version 1.3.2
+# Mark van Eijken 2024
+# Version 1.4
 # Version history:
 # 1.0   - Initial version
 # 1.1   - Fix: Garmin now expects parameters in the SSO url
@@ -16,6 +16,7 @@
 #         Updated user-agent
 #         Remove Garmin Connect Actvity Export -Program Settings.xml deoendency
 #         Layout and output improvements
+#         Report when rate limited (or any other error from Garmin)
 # The scripts does the following:
 # - Downloads activity files from garmin in FIT, TCX or GPX format.
 # - Supports delta download
