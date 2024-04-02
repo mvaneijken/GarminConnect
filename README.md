@@ -12,7 +12,7 @@ It supports two download options:
 - Full, exporting all activities available.
 
 The scripts does the following:
- - Downloads activity files from garmin in FIT, TCX or GPX format.
+ - Downloads activity files from garmin in FIT, TCX, GPX or KML format.
  - Supports delta download
 
 ## Commandline options
