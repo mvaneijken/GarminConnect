@@ -40,9 +40,9 @@ PARAM(
 
 #General parameters and settings
 $error.Clear()
-$ErrorActionPreference = "Stop"
+#$ErrorActionPreference = "Stop"
 
-
+try {
 #GCProgramSettings
 $ProgramSettings = [PSCustomObject]@{
     GCProgramSettings = [PSCustomObject]@{
@@ -379,7 +379,6 @@ else {
 #Download activities in queue and unpack to destination location
 Write-Host "INFO - Continue to process all retrieved activities, please wait..."
 
-try {
     $TempDir = Join-Path -Path $env:temp -ChildPath GarminConnectActivityExportTMP
     "TempDir: {0}" -f $TempDir | Write-Verbose
     $ActivityFileType = $ActivityFileType.tolower()
@@ -490,8 +489,14 @@ try {
 }
 
 catch {
-    Write-Error "ERROR - An unexpected error occurred. See errordetails below:`n$($error[0])"
-    break
+    if ($_ -like "error code:*") {
+        Write-Error "ERROR - An error occurred while downloading the activity files. Garmin responded with error code: {0}. This is probably because your requests are rate limited, please try again later!" -f $_
+        break
+    }
+    {
+        Write-Error "ERROR - An unexpected error occurred. See errordetails below:`n$($error[0])"
+        break
+    }
 }
 
 #Finally write the hidden delta cookie for later use
