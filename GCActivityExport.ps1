@@ -14,7 +14,7 @@
 # 1.4   - Update authentication process to use an OAuth token
 #         Add support for KML files
 #         Updated user-agent
-#         Remove Garmin Connect Actvity Export -Program Settings.xml deoendency
+#         Remove Garmin Connect Actvity Export -Program Settings.xml dependency
 #         Layout and output improvements
 #         Report when rate limited (or any other error from Garmin)
 # The scripts does the following:
