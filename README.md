@@ -58,5 +58,15 @@ Download all activities in TCX format overwriting all files in the destination:<
         Remove Garmin Connect Actvity Export -Program Settings.xml dependency<br>
         Layout and output improvements<br>
         Report when rate limited (or any other error from Garmin)<br>
+2.0   - Rewrite of the authentication: Garmin retired the CAS form login + connect.garmin.com/modern/di-oauth/exchange<br>
+        token endpoint. The script now uses the Garmin SSO JSON login (mobile flow, portal flow as fallback),<br>
+        exchanges the service ticket for a DI OAuth2 token at diauth.garmin.com and calls connectapi.garmin.com.<br>
+        Support for MFA (multi-factor authentication) codes<br>
+        Token cache with automatic refresh, so a login (and MFA prompt) is not needed on every run<br>
+        Retry with back-off when Garmin rate limits (HTTP 429) API calls<br>
+        Fix: GCUserSettings.xml was never loaded<br>
+        Fix: errors were silently swallowed by the catch block<br>
+        Fix: delta cookie is only updated when all downloads succeeded<br>
+        Compatible with Windows PowerShell 5.1 and PowerShell 7+ (Windows, Linux, macOS)        <br>
 ## Credits
 Credits to Kyle Krafka (https://github.com/kjkjava/) for delivering a great example for this script.
